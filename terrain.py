@@ -225,19 +225,62 @@ def pit_terrain(terrain, depth, platform_size=1.):
 
 # 地上有一个坑，各种（5种）类型的坑
 
+# def parallel_pit(terrain, pit_width):
+#     """
+#     在地形上生成三个平行坑（矩形截面），深度 4m。
+#     坑的排布：前 10m 无坑，之后每隔 15m 一个坑，共 3 个。
+#     同时，在平地（坑外区域）上添加随机 terrain。
+#     """
+#     depth_m = 4.0  # 坑深 4m
+#     depth_pix = int(depth_m / terrain.vertical_scale)  # 转换为像素高度
+    
+#     # 计算 pit_width 对应的像素长度（虽然本函数中没有直接使用 pit_width_pix，但保留此变量以便参考）
+#     pit_width_pix = int(pit_width / terrain.horizontal_scale)
+    
+#     # 先在整个地形上添加随机的高度变化，生成随机平地
+#     terrain_utils.random_uniform_terrain(terrain, 
+#                                            min_height=-0.05, 
+#                                            max_height=0.05, 
+#                                            step=0.005, 
+#                                            downsampled_scale=0.2)
+    
+#     # 生成 3 个坑
+#     for i in range(3):
+#         # 每个坑的 x 范围（单位：米）
+#         pit_start_m = 10.0 + i * 5.0
+#         pit_end_m   = pit_start_m + pit_width
+        
+#         # 转换为像素坐标（x 方向）
+#         pit_start_x = int(pit_start_m / terrain.horizontal_scale)
+#         pit_end_x   = int(pit_end_m   / terrain.horizontal_scale)
+        
+#         # 在 [pit_start_x, pit_end_x] × [0, terrain.width-1] 范围内挖坑
+#         # 注意数组切片上限是非包含，所以可以直接赋值坑区域
+#         terrain.height_field_raw[pit_start_x:pit_end_x, 0:terrain.width] = -depth_pix
+        
+#         # # 记录边沿检测点（此处仅记录 x 坐标范围，实际可根据需要增加更多信息）
+#         # terrain.edgecheck.append({
+#         #     "type": "parallel",
+#         #     "pit_index": i,
+#         #     "start_x": pit_start_x,
+#         #     "end_x": pit_end_x,
+#         #     "depth_pix": depth_pix
+#         # })
 def parallel_pit(terrain, pit_width):
     """
     在地形上生成三个平行坑（矩形截面），深度 4m。
-    坑的排布：前 10m 无坑，之后每隔 15m 一个坑，共 3 个。
-    同时，在平地（坑外区域）上添加随机 terrain。
+    坑的排布：前 10m 无坑，之后每隔 5m 一个坑，共 3 个。
+    同时，在平地（坑外区域）上添加随机 terrain，以及在该地块上边和下边添加墙体：
+      - 墙宽 0.05m
+      - 墙高 1m
     """
     depth_m = 4.0  # 坑深 4m
     depth_pix = int(depth_m / terrain.vertical_scale)  # 转换为像素高度
     
-    # 计算 pit_width 对应的像素长度（虽然本函数中没有直接使用 pit_width_pix，但保留此变量以便参考）
+    # 计算 pit_width 对应的像素长度（供参考）
     pit_width_pix = int(pit_width / terrain.horizontal_scale)
     
-    # 先在整个地形上添加随机的高度变化，生成随机平地
+    # 先在整个地形上添加随机高度变化，生成随机平地
     terrain_utils.random_uniform_terrain(terrain, 
                                            min_height=-0.05, 
                                            max_height=0.05, 
@@ -254,11 +297,10 @@ def parallel_pit(terrain, pit_width):
         pit_start_x = int(pit_start_m / terrain.horizontal_scale)
         pit_end_x   = int(pit_end_m   / terrain.horizontal_scale)
         
-        # 在 [pit_start_x, pit_end_x] × [0, terrain.width-1] 范围内挖坑
-        # 注意数组切片上限是非包含，所以可以直接赋值坑区域
+        # 在 [pit_start_x, pit_end_x] × [0, terrain.width-1] 范围内挖坑，坑深为 -depth_pix
         terrain.height_field_raw[pit_start_x:pit_end_x, 0:terrain.width] = -depth_pix
         
-        # # 记录边沿检测点（此处仅记录 x 坐标范围，实际可根据需要增加更多信息）
+        # # 记录边沿检测点（这里只记录了 x 方向起止范围，实际可根据需要扩展更多信息）
         # terrain.edgecheck.append({
         #     "type": "parallel",
         #     "pit_index": i,
@@ -266,6 +308,15 @@ def parallel_pit(terrain, pit_width):
         #     "end_x": pit_end_x,
         #     "depth_pix": depth_pix
         # })
+    
+    # 添加上边和下边的墙
+    wall_width_pix = int(0.1 / terrain.horizontal_scale)  # 墙宽转换为像素
+    wall_height_pix = int(1.0 / terrain.vertical_scale)      # 墙高转换为像素
+
+    # 上边墙：在所有 x 行，y 方向前 wall_width_pix 列设置为 wall_height_pix
+    terrain.height_field_raw[:, 0:wall_width_pix] = wall_height_pix
+    # 下边墙：在所有 x 行，y 方向后 wall_width_pix 列设置为 wall_height_pix
+    terrain.height_field_raw[:, terrain.width - wall_width_pix:terrain.width] = wall_height_pix
 
 
 # def parallel_pit(terrain, pit_width):
@@ -437,9 +488,27 @@ def slope_pit(terrain, pit_width):
         #     "bottom_width_pix": bottom_width_pix
         # })
 
+# def flat_ground(terrain, pit_width):
+#     """
+#     不生成任何坑，也不记录边沿信息。
+#     """
+#     # 这里什么也不做
+#     # terrain.edgecheck = []  # 清空或保持为空
 def flat_ground(terrain, pit_width):
     """
-    不生成任何坑，也不记录边沿信息。
+    不生成任何坑，也不记录边沿信息，同时在平地上添加上边和下边墙：
+      - 墙宽 0.05m
+      - 墙高 1m
     """
-    # 这里什么也不做
-    # terrain.edgecheck = []  # 清空或保持为空
+    # 如果需要平地保持完全平整，可根据需求保持现有高度值不变，
+    # 或者可以调用 terrain_utils.random_uniform_terrain 添加随机扰动（此处保持平整）
+    
+    # 添加上边和下边的墙
+    wall_width_pix = int(0.1 / terrain.horizontal_scale)  # 墙宽转换为像素
+    wall_height_pix = int(1.0 / terrain.vertical_scale)      # 墙高转换为像素
+
+    # 注意：这里假设 terrain.width 表示 height_field_raw 的列数
+    # 上边墙：在所有行，y 方向前 wall_width_pix 列设置为 wall_height_pix
+    terrain.height_field_raw[:, 0:wall_width_pix] = wall_height_pix
+    # 下边墙：在所有行，y 方向后 wall_width_pix 列设置为 wall_height_pix
+    terrain.height_field_raw[:, terrain.width - wall_width_pix:terrain.width] = wall_height_pix
