@@ -52,21 +52,21 @@ class A1RoughCfg( LeggedRobotCfg ):
 
     class terrain( LeggedRobotCfg.terrain ):
         mesh_type = 'trimesh'
-        terrain_length = 50.
-        terrain_width = 2.
-        num_rows= 4 # number of terrain rows (levels)
-        num_cols = 3 # number of terrain cols (types)
+        terrain_length = 30.
+        terrain_width = 4.
+        num_rows= 10 # number of terrain rows (levels)
+        num_cols = 5 # number of terrain cols (types)
         # terrain types: [smooth slope, rough slope, stairs up, stairs down, discrete]
         terrain_proportions = [0.2, 0.2, 0.2, 0.2, 0.2]
         
     class commands( LeggedRobotCfg.commands ):
-        curriculum = True
+        curriculum = False
         max_curriculum = 1.
         num_commands = 4 # default: lin_vel_x, lin_vel_y, ang_vel_yaw, heading (in heading mode ang_vel_yaw is recomputed from heading error)
         resampling_time = 10. # time before command are changed[s]
         heading_command = True # if true: compute ang vel command from heading error
         class ranges:
-            lin_vel_x = [0.0, 5.0] # min max [m/s]
+            lin_vel_x = [0.0, 4.0] # min max [m/s]
             lin_vel_y = [-0.0, 0.0]   # min max [m/s]
             ang_vel_yaw = [-0, 0]    # min max [rad/s]
             heading = [-3.14, 3.14]
@@ -100,10 +100,10 @@ class A1RoughCfg( LeggedRobotCfg ):
   
     class rewards( LeggedRobotCfg.rewards ):
         soft_dof_pos_limit = 0.9
-        base_height_target = 0.6
+        base_height_target = 0.5
         class scales( LeggedRobotCfg.rewards.scales ):
             dof_pos_limits = -10.0
-            base_height = -2.
+            base_height = -10.
             termination = -0.0
             tracking_lin_vel = 5.0
             tracking_ang_vel = 0.5
@@ -120,7 +120,7 @@ class A1RoughCfg( LeggedRobotCfg ):
             stand_still = -0.
 
 
-            y_large_offset = -800.
+            y_large_offset = -8.
             x_offset = 0.06
 
 class A1RoughCfgPPO( LeggedRobotCfgPPO ):
