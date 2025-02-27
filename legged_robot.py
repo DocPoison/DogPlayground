@@ -687,7 +687,7 @@ class LeggedRobot(BaseTask):
             # create env instance
             env_handle = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
             pos = self.env_origins[i].clone()
-            # pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
+            pos[:2] += torch_rand_float(-1., 1., (2,1), device=self.device).squeeze(1)
             start_pose.p = gymapi.Vec3(*pos)
                 
             rigid_shape_props = self._process_rigid_shape_props(rigid_shape_props_asset, i)
@@ -713,58 +713,20 @@ class LeggedRobot(BaseTask):
         for i in range(len(termination_contact_names)):
             self.termination_contact_indices[i] = self.gym.find_actor_rigid_body_handle(self.envs[0], self.actor_handles[0], termination_contact_names[i])
 
-    # def _get_env_origins(self):
-    #     """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
-    #         Otherwise create a grid.
-    #     """
-    #     if self.cfg.terrain.mesh_type in ["heightfield", "trimesh"]:
-    #         self.custom_origins = True
-    #         self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-    #         # put robots at the origins defined by the terrain
-    #         max_init_level = self.cfg.terrain.max_init_terrain_level
-    #         if not self.cfg.terrain.curriculum: max_init_level = self.cfg.terrain.num_rows - 1
-    #         self.terrain_levels = torch.randint(0, max_init_level+1, (self.num_envs,), device=self.device)
-    #         self.terrain_types = torch.div(torch.arange(self.num_envs, device=self.device), (self.num_envs/self.cfg.terrain.num_cols), rounding_mode='floor').to(torch.long)
-    #         self.max_terrain_level = self.cfg.terrain.num_rows
-    #         self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
-    #         self.env_origins[:] = self.terrain_origins[self.terrain_levels, self.terrain_types]
-    #     else:
-    #         self.custom_origins = False
-    #         self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
-    #         # create a grid of robots
-    #         num_cols = np.floor(np.sqrt(self.num_envs))
-    #         num_rows = np.ceil(self.num_envs / num_cols)
-    #         xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
-    #         spacing = self.cfg.env.env_spacing
-    #         self.env_origins[:, 0] = spacing * xx.flatten()[:self.num_envs]
-    #         self.env_origins[:, 1] = spacing * yy.flatten()[:self.num_envs]
-    #         self.env_origins[:, 2] = 0.
-
     def _get_env_origins(self):
         """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
-        Otherwise create a grid.
+            Otherwise create a grid.
         """
         if self.cfg.terrain.mesh_type in ["heightfield", "trimesh"]:
             self.custom_origins = True
-            self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
             self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
             # put robots at the origins defined by the terrain
             max_init_level = self.cfg.terrain.max_init_terrain_level
             if not self.cfg.terrain.curriculum: max_init_level = self.cfg.terrain.num_rows - 1
-            max_init_level = min(max_init_level, self.terrain_origins.shape[0] - 1)
-
             self.terrain_levels = torch.randint(0, max_init_level+1, (self.num_envs,), device=self.device)
             self.terrain_types = torch.div(torch.arange(self.num_envs, device=self.device), (self.num_envs/self.cfg.terrain.num_cols), rounding_mode='floor').to(torch.long)
-            self.terrain_types = torch.clamp(self.terrain_types, 0, self.terrain_origins.shape[1] - 1)
             self.max_terrain_level = self.cfg.terrain.num_rows
-
-            print(f"terrain_levels max: {self.terrain_levels.max()}, terrain_origins.shape[0]: {self.terrain_origins.shape[0]}")
-            print(f"terrain_types max: {self.terrain_types.max()}, terrain_origins.shape[1]: {self.terrain_origins.shape[1]}")
-            if self.terrain_levels.max() >= self.terrain_origins.shape[0]:
-                raise ValueError(f"Error: terrain_levels contains an index ({self.terrain_levels.max()}) that is out of bounds for terrain_origins.shape[0] ({self.terrain_origins.shape[0]})")
-            if self.terrain_types.max() >= self.terrain_origins.shape[1]:
-                raise ValueError(f"Error: terrain_types contains an index ({self.terrain_types.max()}) that is out of bounds for terrain_origins.shape[1] ({self.terrain_origins.shape[1]})")
-
+            self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
             self.env_origins[:] = self.terrain_origins[self.terrain_levels, self.terrain_types]
         else:
             self.custom_origins = False
@@ -777,6 +739,44 @@ class LeggedRobot(BaseTask):
             self.env_origins[:, 0] = spacing * xx.flatten()[:self.num_envs]
             self.env_origins[:, 1] = spacing * yy.flatten()[:self.num_envs]
             self.env_origins[:, 2] = 0.
+
+    # def _get_env_origins(self):
+    #     """ Sets environment origins. On rough terrain the origins are defined by the terrain platforms.
+    #     Otherwise create a grid.
+    #     """
+    #     if self.cfg.terrain.mesh_type in ["heightfield", "trimesh"]:
+    #         self.custom_origins = True
+    #         self.terrain_origins = torch.from_numpy(self.terrain.env_origins).to(self.device).to(torch.float)
+    #         self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
+    #         # put robots at the origins defined by the terrain
+    #         max_init_level = self.cfg.terrain.max_init_terrain_level
+    #         if not self.cfg.terrain.curriculum: max_init_level = self.cfg.terrain.num_rows - 1
+    #         max_init_level = min(max_init_level, self.terrain_origins.shape[0] - 1)
+
+    #         self.terrain_levels = torch.randint(0, max_init_level+1, (self.num_envs,), device=self.device)
+    #         self.terrain_types = torch.div(torch.arange(self.num_envs, device=self.device), (self.num_envs/self.cfg.terrain.num_cols), rounding_mode='floor').to(torch.long)
+    #         self.terrain_types = torch.clamp(self.terrain_types, 0, self.terrain_origins.shape[1] - 1)
+    #         self.max_terrain_level = self.cfg.terrain.num_rows
+
+    #         print(f"terrain_levels max: {self.terrain_levels.max()}, terrain_origins.shape[0]: {self.terrain_origins.shape[0]}")
+    #         print(f"terrain_types max: {self.terrain_types.max()}, terrain_origins.shape[1]: {self.terrain_origins.shape[1]}")
+    #         if self.terrain_levels.max() >= self.terrain_origins.shape[0]:
+    #             raise ValueError(f"Error: terrain_levels contains an index ({self.terrain_levels.max()}) that is out of bounds for terrain_origins.shape[0] ({self.terrain_origins.shape[0]})")
+    #         if self.terrain_types.max() >= self.terrain_origins.shape[1]:
+    #             raise ValueError(f"Error: terrain_types contains an index ({self.terrain_types.max()}) that is out of bounds for terrain_origins.shape[1] ({self.terrain_origins.shape[1]})")
+
+    #         self.env_origins[:] = self.terrain_origins[self.terrain_levels, self.terrain_types]
+    #     else:
+    #         self.custom_origins = False
+    #         self.env_origins = torch.zeros(self.num_envs, 3, device=self.device, requires_grad=False)
+    #         # create a grid of robots
+    #         num_cols = np.floor(np.sqrt(self.num_envs))
+    #         num_rows = np.ceil(self.num_envs / num_cols)
+    #         xx, yy = torch.meshgrid(torch.arange(num_rows), torch.arange(num_cols))
+    #         spacing = self.cfg.env.env_spacing
+    #         self.env_origins[:, 0] = spacing * xx.flatten()[:self.num_envs]
+    #         self.env_origins[:, 1] = spacing * yy.flatten()[:self.num_envs]
+    #         self.env_origins[:, 2] = 0.
 
     def _parse_cfg(self, cfg):
         self.dt = self.cfg.control.decimation * self.sim_params.dt

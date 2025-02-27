@@ -195,6 +195,8 @@ class Terrain:
         x2 = int((self.env_length/2. + 1) / terrain.horizontal_scale)
         y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
         y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
+        # y1 = int((self.env_width/2. - 1) / terrain.horizontal_scale)
+        # y2 = int((self.env_width/2. + 1) / terrain.horizontal_scale)
         env_origin_z = np.max(terrain.height_field_raw[x1:x2, y1:y2])*terrain.vertical_scale
         self.env_origins[i, j] = [env_origin_x, env_origin_y, env_origin_z]
 
@@ -245,7 +247,7 @@ def parallel_pit(terrain, pit_width):
     # 生成 3 个坑
     for i in range(3):
         # 每个坑的 x 范围（单位：米）
-        pit_start_m = 10.0 + i * 10.0
+        pit_start_m = 10.0 + i * 5.0
         pit_end_m   = pit_start_m + pit_width
         
         # 转换为像素坐标（x 方向）
