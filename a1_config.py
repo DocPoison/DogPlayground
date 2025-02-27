@@ -113,7 +113,6 @@ class A1RoughCfg( LeggedRobotCfg ):
             torques = -0.0002
             dof_vel = -0.
             dof_acc = -2.5e-7
-            base_height = -0. 
             feet_air_time =  1.0
             collision = -1.
             feet_stumble = -0.0 
