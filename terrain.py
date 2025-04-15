@@ -129,7 +129,10 @@ class Terrain:
         gap_size = 1. * difficulty
         pit_depth = 1. * difficulty
 
-        pit_width = 0.6 * difficulty
+        # pit_width = 0.6 * difficulty
+        pit_width = 1.2 * difficulty
+        stair_height = 0.2 * difficulty
+        stair_width = 0.65 * difficulty
 
         # if choice < self.proportions[0]:
         #     if choice < self.proportions[0]/ 2:
@@ -156,18 +159,27 @@ class Terrain:
 
         if choice < self.proportions[0]:
             parallel_pit(terrain, pit_width)
+            place_boxes(terrain)
             # self.add_roughness(terrain)
         elif choice < self.proportions[1]:
             parallel_pit(terrain, pit_width) # elliptical_pit(terrain,pit_width)
+            place_boxes(terrain)
             # self.add_roughness(terrain)
         elif choice < self.proportions[2]:
-            parallel_pit(terrain, pit_width)# semicircle_pit(terrain, pit_width)
+            parallel_pit(terrain, pit_width)
+            place_boxes(terrain)
+            # parallel_pit(terrain, pit_width)# semicircle_pit(terrain, pit_width)
             # self.add_roughness(terrain)
         elif choice < self.proportions[3]:
             parallel_pit(terrain, pit_width)
+            # raised_step(terrain, stair_height, stair_width)
+            place_boxes(terrain)
+            # parallel_pit(terrain, pit_width)
             # self.add_roughness(terrain)
         elif choice < self.proportions[4]:
-            flat_ground(terrain, pit_width)
+            parallel_pit(terrain, 0.)
+            place_boxes(terrain)
+            # flat_ground(terrain, pit_width)
             # self.add_roughness(terrain)
         elif choice < self.proportions[5]:
             terrain_utils.stepping_stones_terrain(terrain, stone_size=stepping_stones_size, stone_distance=stone_distance, max_height=0., platform_size=4.)
@@ -310,13 +322,59 @@ def parallel_pit(terrain, pit_width):
         # })
     
     # 添加上边和下边的墙
-    wall_width_pix = int(0.1 / terrain.horizontal_scale)  # 墙宽转换为像素
+    wall_width_pix = int(0.2 / terrain.horizontal_scale)  # 墙宽转换为像素
     wall_height_pix = int(1.0 / terrain.vertical_scale)      # 墙高转换为像素
 
     # 上边墙：在所有 x 行，y 方向前 wall_width_pix 列设置为 wall_height_pix
-    terrain.height_field_raw[:, 0:wall_width_pix] = wall_height_pix
+    terrain.height_field_raw[:, 0: wall_width_pix ] = wall_height_pix
     # 下边墙：在所有 x 行，y 方向后 wall_width_pix 列设置为 wall_height_pix
     terrain.height_field_raw[:, terrain.width - wall_width_pix:terrain.width] = wall_height_pix
+
+def raised_step(terrain, stair_height, stair_width):
+    """
+    在地形上生成三个抬高区域（单个台阶），台阶排布：
+      - 前 10m 无台阶，
+      - 之后每隔 5m 一个台阶，共 3 个。
+    台阶区域的宽度为 stair_width（单位：米），台阶高度为 stair_height（单位：米）。
+    同时，在平地（台阶外区域）上添加随机 terrain，以及在该地块上边和下边添加墙体：
+      - 墙宽 0.05m
+      - 墙高 1m
+    """
+    # 将 stair_height 从米转换为像素高度
+    stair_height_pix = int(stair_height / terrain.vertical_scale)
+    # 将 stair_width 从米转换为像素长度
+    stair_width_pix = int(stair_width / terrain.horizontal_scale)
+    
+    # 先在整个地形上添加随机高度变化，生成随机平地
+    terrain_utils.random_uniform_terrain(terrain, 
+                                           min_height=-0.05, 
+                                           max_height=0.05, 
+                                           step=0.005, 
+                                           downsampled_scale=0.2)
+    
+    # 生成 3 个台阶
+    for i in range(3):
+        # 每个台阶的 x 范围（单位：米）
+        step_start_m = 10.0 + i * 5.0
+        step_end_m   = step_start_m + stair_width
+        
+        # 转换为像素坐标（x 方向）
+        step_start_x = int(step_start_m / terrain.horizontal_scale)
+        step_end_x   = int(step_end_m   / terrain.horizontal_scale)
+        
+        # 在 [step_start_x, step_end_x] × [0, terrain.width-1] 范围内生成台阶，台阶高度为 stair_height_pix
+        terrain.height_field_raw[step_start_x:step_end_x, 0:terrain.width] = stair_height_pix
+    
+    # 添加上边和下边的墙
+    wall_width_pix = int(0.2 / terrain.horizontal_scale)  # 墙宽转换为像素
+    wall_height_pix = int(1.0 / terrain.vertical_scale)      # 墙高转换为像素
+
+    # 使用 height_field_raw 的实际宽度，防止 terrain.width 与数组列数不匹配
+    num_cols = terrain.height_field_raw.shape[1]
+    # 上边墙：所有行，y 方向前 wall_width_pix 列赋值为 wall_height_pix
+    terrain.height_field_raw[:, 0:wall_width_pix] = wall_height_pix
+    # 下边墙：所有行，y 方向后 wall_width_pix 列赋值为 wall_height_pix
+    terrain.height_field_raw[:, num_cols - wall_width_pix:num_cols] = wall_height_pix
 
 
 # def parallel_pit(terrain, pit_width):
@@ -509,6 +567,59 @@ def flat_ground(terrain, pit_width):
 
     # 注意：这里假设 terrain.width 表示 height_field_raw 的列数
     # 上边墙：在所有行，y 方向前 wall_width_pix 列设置为 wall_height_pix
-    terrain.height_field_raw[:, 0:wall_width_pix] = wall_height_pix
+    terrain.height_field_raw[:, 0:wall_width_pix + 1] = wall_height_pix
     # 下边墙：在所有行，y 方向后 wall_width_pix 列设置为 wall_height_pix
     terrain.height_field_raw[:, terrain.width - wall_width_pix:terrain.width] = wall_height_pix
+
+def place_boxes(terrain):
+    """
+    在 terrain 上放置 2 个随机长方体凸起（盒子）：
+      - x 方向放置在 13m 和 26m 处；
+      - 盒子底面正方形，边长随机 ∈ [0.3, 0.6] m；
+      - 盒子高度随机 ∈ [0.4, 0.8] m；
+      - 盒子中心 y 位置随机 ∈ [0, terrain.width * horizontal_scale] m；
+    最终在 height_field_raw 中将对应区域高度设置为 box_height_pix。
+    """
+    # 地面像素尺寸
+    num_rows, num_cols = terrain.height_field_raw.shape
+    
+    # 随机数种子（可选）
+    # np.random.seed(0)
+    
+    # 要放置的 x 方向米坐标列表
+    x_positions_m = [13.0, 24.0]
+    
+    for idx, x_m in enumerate(x_positions_m):
+        # 随机生成盒子底面边长和高度（米）
+        box_size_m   = np.random.uniform(0.6, 1.0)  # 底面边长
+        box_height_m = np.random.uniform(0.5, 1.0)  # 盒子高度
+        
+        # 随机生成盒子中心在 y 方向的米坐标
+        center_y_m = np.random.uniform(0.6 * terrain.horizontal_scale , (terrain.width - 0.6) * terrain.horizontal_scale)
+        
+        # 将米单位转换为像素
+        half_size_pix = int((box_size_m/2.0) / terrain.horizontal_scale)      # 半边长（像素）
+        height_pix    = int(box_height_m     / terrain.vertical_scale)        # 盒子高度（像素）
+        center_x_pix  = int(x_m              / terrain.horizontal_scale)      # x 轴中心（像素）
+        center_y_pix  = int(center_y_m       / terrain.horizontal_scale)      # y 轴中心（像素）
+        
+        # 计算像素范围，并裁剪到合法索引
+        x1 = max(center_x_pix - half_size_pix, 0)
+        x2 = min(center_x_pix + half_size_pix, num_rows)
+        y1 = max(center_y_pix - half_size_pix, 0)
+        y2 = min(center_y_pix + half_size_pix, num_cols)
+        
+        # 在 height_field_raw 上抬高该区域，形成盒子
+        terrain.height_field_raw[x1:x2, y1:y2] = height_pix
+        
+        # 记录盒子信息，方便后续检测或渲染
+        if not hasattr(terrain, 'box_info'):
+            terrain.box_info = []
+        terrain.box_info.append({
+            "box_index": idx,
+            "x_range": (x1, x2),
+            "y_range": (y1, y2),
+            "size_m": box_size_m,
+            "height_m": box_height_m,
+            "height_pix": height_pix
+        })
