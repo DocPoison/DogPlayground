@@ -592,10 +592,10 @@ def place_boxes(terrain):
     for idx, x_m in enumerate(x_positions_m):
         # 随机生成盒子底面边长和高度（米）
         box_size_m   = np.random.uniform(0.6, 1.0)  # 底面边长
-        box_height_m = np.random.uniform(0.5, 1.0)  # 盒子高度
+        box_height_m = np.random.uniform(0.6, 1.0)  # 盒子高度
         
         # 随机生成盒子中心在 y 方向的米坐标
-        center_y_m = np.random.uniform(0.6 * terrain.horizontal_scale , (terrain.width - 0.6) * terrain.horizontal_scale)
+        center_y_m = np.random.uniform(0.6 , (4.0 - 0.6) )
         
         # 将米单位转换为像素
         half_size_pix = int((box_size_m/2.0) / terrain.horizontal_scale)      # 半边长（像素）
